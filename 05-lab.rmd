@@ -1,6 +1,9 @@
 ---
 title: "Lab 05 - Data Wrangling"
-output: github_document
+output:
+  - github_document
+  - html_document
+always_allow_html: true
 ---
 
 # Learning goals
@@ -87,19 +90,8 @@ Once you are done setting up the project, you can now start working with the MET
 #install.packages("dtplyr")
 #install.packages("dtplyr")
 library(data.table)
-
-```
-
-
-
-```{r met.data}
-if (!file.exists("met_all.gz"))
-  download.file(
-    url = "https://raw.githubusercontent.com/USCbiostats/data-science-data/master/02_met/met_all.gz",
-    destfile = "met_all.gz",
-    method   = "libcurl",
-    timeout  = 60
-    )
+library(dplyr)
+download.file("https://raw.githubusercontent.com/USCbiostats/data-science-data/master/02_met/met_all.gz", "met_all.gz", method="libcurl", timeout = 60)
 met <- data.table::fread("met_all.gz")
 
 ```
@@ -107,11 +99,11 @@ met <- data.table::fread("met_all.gz")
 
 2. Load the met data from https://raw.githubusercontent.com/USCbiostats/data-science-data/master/02_met/met_all.gz, and also the station data. For the later, you can use the code we used during lecture to pre-process the stations data:
 
-```{r stations-data, eval = FALSE}
+```{r stations-data, eval = TRUE, cache=TRUE}
 # Download the data
 stations <- fread("ftp://ftp.ncdc.noaa.gov/pub/data/noaa/isd-history.csv")
 stations[, USAF := as.integer(USAF)]
-
+## Warning in eval(jsub, SDenv, parent.frame()): NAs introduced by coercion
 # Dealing with NAs and 999999
 stations[, USAF   := fifelse(USAF == 999999, NA_integer_, USAF)]
 stations[, CTRY   := fifelse(CTRY == "", NA_character_, CTRY)]
