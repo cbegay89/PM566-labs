@@ -1,0 +1,290 @@
+---
+title: "Assignment 5 Cynthia Begay"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#install.packages(c("data.table","leaflet", "hmisc"))
+#install.packages("Hmisc")
+#install.packages("hrbrthemes")
+#install.packages("dplyr")
+library(dplyr)
+library(hrbrthemes)
+library(gcookbook)
+library(ggplot2)
+
+library(data.table)
+library(leaflet)
+library(tidyverse)
+```
+
+```{r, echo=TRUE, message=FALSE}
+download.file("https://raw.githubusercontent.com/USCbiostats/data-science-data/master/01_chs/chs_individual.csv", destfile= "individual.csv")
+download.file("https://raw.githubusercontent.com/USCbiostats/data-science-data/master/01_chs/chs_regional.csv", destfile = "regional.csv")
+
+individual <- data.table::fread("individual.csv")
+regional <- data.table::fread("regional.csv")
+
+```
+#1: Merge Data
+```{r}
+CHScomb <- merge(
+  x = individual, y = regional,
+  by.x = "townname", by.y = "townname",
+  all.x = TRUE, all.y = TRUE
+  )
+# Print out a sample of the data
+CHScomb[1:5, .(townname, pm25_so4	, bmi)]
+```
+
+```{r}
+dim(CHScomb)
+```
+There are 1200 rows and 49 variables. There are no duplicates present after the merge. 
+
+Addressing missing variables
+```{r}
+#Missing BMI; replacing with the sex and race averages
+  CHScomb[, bmi2 := fcoalesce(bmi, mean(bmi, na.rm = TRUE)),
+    by = .(male, hispanic)]
+summary(CHScomb$bmi2)
+table(CHScomb$bmi2)
+
+#Missing FEV; replacing with the sex and race average
+  CHScomb[, fev2 := fcoalesce(fev, mean(fev, na.rm = TRUE)),
+    by = .(male, hispanic)]
+summary(CHScomb$fev2)
+table(CHScomb$fev2)
+
+#Missing PM2.5Mass; replacing with the sex and race average
+  CHScomb[, pm25_mass2 := fcoalesce(pm25_mass, mean(pm25_mass, na.rm = TRUE)),
+    by = .(male, hispanic)]
+summary(CHScomb$pm25_mass2)
+table(CHScomb$pm25_mass2)
+
+```
+
+#2: Create New BMI Categorical Variable
+```{r}
+CHScomb$obesity_level2 <- 
+                  ifelse(CHScomb$bmi2 > 24 , "obese",
+                  ifelse(CHScomb$bmi2 >= 22 & CHScomb$bmi <= 24, "overweight",
+                  ifelse(CHScomb$bmi2 >= 14 & CHScomb$bmi <22, "normal", "underweight" )))
+
+summary(CHScomb$bmi2)
+table(CHScomb$obesity_level2)
+```
+The minimum bmi is 11.30 and the maximum is 41.27. The majority of the sample is in the normal range for bmi (n=886). There are 103 observations that are obese, 87 overweight, and 35 underweight. 
+
+
+#3: Create Smoke_gas_exposure variable
+```{r}
+CHScomb %>% group_by(smoke,gasstove) %>% count()
+CHScomb <- CHScomb %>% 
+  mutate(smoke_gas_exposure = 
+                case_when(smoke == 0 & gasstove == 0 ~ "No Exposure", 
+                         smoke == 0 & gasstove == 1 ~ "Gas Exposure Only", 
+                         smoke == 1 & gasstove == 0 ~ "Smoke Exposure Only", 
+                         smoke == 1 & gasstove == 1 ~ "Gas & Smoke Exposure", 
+                         ))
+table(CHScomb$smoke_gas_exposure)
+summary(CHScomb$smoke)
+summary(CHScomb$gasstove)
+```
+Four categories were created: No exposure, gas exposure only, smoke exposure only, and gas & smoke exposure. There are 40 observations missing from the smoke variable and 33 observations missing from the gasstove variable. 
+
+#4: Summary tables of FEV & Asthma
+```{r}
+#Town summary table
+CHScomb %>% group_by(townname) %>% 
+  summarise(fev_avg = mean(fev2, na.rm=TRUE),
+            asthma.indication = mean(asthma, na.rm = TRUE),
+            prop_asthma = length(which(asthma == 1)) / (1200-length(which(asthma == 1))))
+#Sex summary table
+CHScomb <- CHScomb %>% mutate(sex = case_when( male == 0 ~ "Female",
+                                               male == 1 ~ "Male"))
+CHScomb %>% group_by(sex) %>% 
+  summarise(fev_avg = mean(fev2, na.rm=TRUE),
+            asthma.indication = mean(asthma, na.rm = TRUE),
+            prop_asthma = length(which(asthma == 1)) / (1200-length(which(asthma == 1))))
+#Obesity Level summary table
+CHScomb %>% group_by(obesity_level2) %>% 
+summarise(fev_avg = mean(fev2, na.rm=TRUE),
+            asthma.indication = mean(asthma, na.rm = TRUE),
+            prop_asthma = length(which(asthma == 1)) / (1200-length(which(asthma == 1))))
+#Smoke Gas Exposure summary table
+CHScomb %>% group_by(smoke_gas_exposure) %>% 
+summarise(fev_avg = mean(fev2, na.rm=TRUE),
+            asthma.indication = mean(asthma, na.rm = TRUE),
+            prop_asthma = length(which(asthma == 1)) / (1200-length(which(asthma == 1))))
+```
+#Looking at the data (EDA)
+EDA Checklist Week 3
+
+### 2. Check the dimensions, headers, footers. How many columns, rows are there?
+
+```{r}
+dim(CHScomb)
+head(CHScomb)
+tail(CHScomb)
+```
+There are 1200 observations and 55 variables dataset.
+
+### 3. Take a look at the variables.
+
+```{r}
+str(CHScomb)
+
+
+cor(CHScomb$bmi2, CHScomb$pm25_mass, use="complete")
+#Slight correlation between bmi and pm2.5 mass. Slightly negative correlation.
+cor(CHScomb$bmi2, CHScomb$fev2, use="complete")
+#Slight correlation between bmi and fev. Slightly positive. 
+cor(CHScomb$fev2, CHScomb$pm25_mass, use="complete")
+#No correlation between fev and pm2.5 mass levels.
+
+hist(CHScomb$fev2, breaks=100)
+#Normal distribution for fev2
+hist(CHScomb$bmi2)
+#Left skewed distribution for bmi
+hist(CHScomb$pm25_mass)
+#Distribution is not uniform for pm25; possibly due to small data
+```
+```
+
+
+### 4. Take a closer look at the key variables. 
+
+```{r}
+table(CHScomb$bmi2)
+table(CHScomb$fev2)
+table(CHScomb$smoke_gas_exposure)
+table(CHScomb$pm25_mass2)
+summary(CHScomb$bmi2)
+summary(CHScomb$fev2)
+summary(CHScomb$smoke_gas_exposure)
+summary(CHScomb$pm25_mass2)
+```
+The key variables seem to have plausible values and ranges. 
+
+
+1. Facet plot showing scatterplots with regression lines of BMI vs FEV by “townname”.
+
+```{r}
+CHScomb %>% 
+filter(!(townname %in% NA)) %>%
+  ggplot(mapping = aes(x=bmi2, y=fev2, color=townname))+
+  geom_point()+
+  stat_smooth(method=lm)+
+   facet_wrap(~townname, nrow=4)
+```
+
+2. Stacked histograms of FEV by BMI category and FEV by smoke/gas exposure. Use different color schemes than the ggplot default.
+
+```{r}
+CHScomb %>% 
+  filter(!(obesity_level2 %in% NA)) %>%
+  ggplot()+
+  geom_histogram(mapping= aes (x=fev2, fill=obesity_level2))+
+  scale_fill_brewer(palette = "GnBu")+
+  labs(title="FEV (1mL) by BMI category", x="fev", y="Count")+
+  theme_minimal()
+```
+Those with normal bmi are distributed throughout all fev values, with the highest concentration in the 1800-2200 range. Those with lower bmi are on the lower end of fev; alternatively, those who are overweight have higher fev levels. 
+
+
+```{r}
+CHScomb %>% 
+  filter(!(smoke_gas_exposure %in% NA)) %>%
+  ggplot()+
+  geom_histogram(mapping= aes (x=fev2, fill=smoke_gas_exposure))+
+  scale_fill_brewer(palette = "GnBu")+
+  labs(title="FEV (1mL) by Smoke Exposure Category", x="fev", y="Count")+
+  theme_minimal()
+```
+All categories of smoke/gas exposure seem to be evenly distributed among all fev values. The highest concentration for all smoke/gas exposure values hovers between 1800 and 2200.
+
+3.Barchart of BMI by smoke/gas exposure.
+```{r}
+CHScomb %>% 
+  filter(!(smoke_gas_exposure %in% NA)) %>%
+  filter(!(obesity_level2 %in% NA)) %>%
+  ggplot()+
+  geom_bar(mapping= aes (x=obesity_level2, fill=smoke_gas_exposure))+
+  scale_fill_brewer(palette = "GnBu")+
+  labs(title="BMI by Smoke Exposure Category", x="obesity_level2", y="Count")+
+  theme_minimal()
+```
+4. Statistical summary graphs of FEV by BMI and FEV by smoke/gas exposure category.
+```{r}
+#Boxplot FEV vs Obesity Levels
+CHScomb %>% 
+  filter(!(obesity_level2 %in% NA)) %>%
+ggplot()+
+  geom_boxplot(mapping = aes(y=fev2, x=obesity_level2)) 
+```
+```{r}
+#Histogram FEV vs Obesity Levels
+CHScomb %>%
+  filter(!(obesity_level2 %in% NA)) %>%
+  ggplot( aes(x=fev2, fill=obesity_level2)) +
+    geom_histogram( color="#e9ecef", alpha=0.6, position = 'identity') +
+    scale_fill_brewer(palette = "Accent")+
+   labs(title="FEV by BMI", x="obesity_level2", y="Count") 
+```
+```{r}
+#Boxplot FEV by Exposure
+
+CHScomb %>% 
+  filter(!(smoke_gas_exposure %in% NA)) %>%
+ggplot()+
+  geom_boxplot(mapping = aes(y=fev2, x=smoke_gas_exposure)) 
+```
+
+```{r}
+#Histogram FEV vs Exposure
+CHScomb %>%
+  filter(!(smoke_gas_exposure %in% NA)) %>%
+  ggplot( aes(x=fev2, fill=smoke_gas_exposure)) +
+    geom_histogram( color="#e9ecef", alpha=0.6, position = 'identity') +
+    scale_fill_brewer(palette = "Dark2")+
+   labs(title="FEV by Smoke exposure", x="smoke_gas_exposure", y="Count") 
+```
+5. A leaflet map showing the concentrations of PM2.5 mass in each of the CHS communities.
+
+There are higher pm 2.5 mass concentrations in the Los Angeles, Riverside, and San Bernardino areas. 
+```{r}
+CHScomb <-CHScomb[!is.na(pm25_mass)]
+  
+pm25_mass_pal = colorNumeric(c('blue', 'purple', 'red'), domain=CHScomb$pm25_mass)
+
+leaflet(CHScomb) %>%
+  addProviderTiles('OpenStreetMap') %>% 
+  addCircles(lat=~lat, lng=~lon, color=~pm25_mass_pal(pm25_mass), opacity=1, fillOpacity = 1, radius=500) %>%
+  addLegend('bottomleft', pal=pm25_mass_pal, values=CHScomb$pm25_mass, title="PM 2.5 Mass Map", opacity=1)
+```
+
+6. Choose a visualization to examine whether PM2.5 mass is associated with FEV.
+```{r}
+CHScomb %>%
+  ggplot(mapping = aes(x=pm25_mass, y=fev2))+
+  geom_jitter()+
+labs(title="Association of PM 2.5 mass and fev levels", x="PM2.5 Mass", y="FEV")
+
+p <- ggplot(CHScomb, aes(pm25_mass, fev2))
+p + geom_jitter(aes(color=obesity_level2))
+```
+```{r}
+CHScomb %>% 
+  filter(!(pm25_mass %in% NA)) %>%
+  ggplot(mapping = aes(x = pm25_mass,y = fev))+
+  geom_point()+
+  geom_smooth()
+```
+
+1. What is the association between BMI and FEV (forced expiratory volume)? 
+Those who are overweight or obese tend to have higher FEV. There is little difference among those who are underweight and normal bmi levels. 
+2. What is the association between smoke and gas exposure and FEV? Those who have gas exposure only have hight fev rates overall. Both gas and smoke exposure are distributed similarly. Those who have no exposure have fev exposure at all ranges. 
+
+3. What is the association between PM2.5 exposure and FEV?
+There does not seem to be a association between pm2.5 exposure and FEV. The correlation line in the scatter plot is flat. 
