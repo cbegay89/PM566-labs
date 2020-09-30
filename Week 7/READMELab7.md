@@ -78,7 +78,7 @@ query_ids
 ```
 
     ## Response [https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=covid19%20hawaii&retmax=1000]
-    ##   Date: 2020-09-30 22:57
+    ##   Date: 2020-09-30 23:06
     ##   Status: 200
     ##   Content-Type: text/xml; charset=UTF-8
     ##   Size: 2.34 kB
@@ -157,9 +157,12 @@ behavior, you would need to do the following `I("123,456")`.
 
 ``` r
 publications <- GET(
-  url   = "BASELINE URL HERE",
+  url   = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi",
   query = list(
-    "PARAMETERS OF THE QUERY"
+    db = "pubmed",
+    id = paste(ids, collapse = ","),
+    retmax= 1000,
+    rettype= "abstract"
     )
 )
 # Turning the output into character vector
