@@ -68,12 +68,47 @@ Use the function `httr::GET()` to make the following query:
 ``` r
 library(httr)
 query_ids <- GET(
-  url   = "BASELINE URL",
-  query = list("QUERY PARAMETERS")
+  url   = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi",
+  query = list(
+          db= "pubmed",
+          term= "covid19 hawaii",
+          retmax= 1000)
 )
+query_ids
+```
+
+    ## Response [https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=covid19%20hawaii&retmax=1000]
+    ##   Date: 2020-09-30 22:57
+    ##   Status: 200
+    ##   Content-Type: text/xml; charset=UTF-8
+    ##   Size: 2.34 kB
+    ## <?xml version="1.0" encoding="UTF-8" ?>
+    ## <!DOCTYPE eSearchResult PUBLIC "-//NLM//DTD esearch 20060628//EN" "https://eu...
+    ## <eSearchResult><Count>40</Count><RetMax>40</RetMax><RetStart>0</RetStart><IdL...
+    ## <Id>32984015</Id>
+    ## <Id>32969950</Id>
+    ## <Id>32921878</Id>
+    ## <Id>32914097</Id>
+    ## <Id>32914093</Id>
+    ## <Id>32912595</Id>
+    ## <Id>32907823</Id>
+    ## ...
+
+``` r
 # Extracting the content of the response of GET
 ids <- httr::content(query_ids)
+ids
 ```
+
+    ## {xml_document}
+    ## <eSearchResult>
+    ## [1] <Count>40</Count>
+    ## [2] <RetMax>40</RetMax>
+    ## [3] <RetStart>0</RetStart>
+    ## [4] <IdList>\n  <Id>32984015</Id>\n  <Id>32969950</Id>\n  <Id>32921878</Id>\n ...
+    ## [5] <TranslationSet>\n  <Translation>\n    <From>covid19</From>\n    <To>"COV ...
+    ## [6] <TranslationStack>\n  <TermSet>\n    <Term>"COVID-19"[Supplementary Conce ...
+    ## [7] <QueryTranslation>("COVID-19"[Supplementary Concept] OR "COVID-19"[All Fi ...
 
 The query will return an XML object, we can turn it into a character
 list to analyze the text directly with `as.character()`. Another way of
@@ -93,9 +128,11 @@ information. Fill out the following lines of code:
 # Turn the result into a character vector
 ids <- as.character(ids)
 # Find all the ids 
-ids <- stringr::str_extract_all(ids, "PATTERN")[[1]]
+ids <- stringr::str_extract_all(ids, "<Id>[0-9]+</Id>")[[1]]
+
 # Remove all the leading and trailing <Id> </Id>. Make use of "|"
-ids <- stringr::str_remove_all(ids, "PATTERN")
+ids <- stringr::str_remove_all(ids, "<Id>|</Id>")
+#ids <- stringr::str_remove_all(ids, "</?Id>")
 ```
 
 With the ids in hand, we can now try to get the abstracts of the papers.

@@ -1,6 +1,9 @@
 ---
 title: "Assignment 5 Cynthia Begay"
-output: html_document
+output:
+  - github_document
+  - html_document
+always_allow_html: true
 ---
 
 ```{r setup, include=FALSE}
