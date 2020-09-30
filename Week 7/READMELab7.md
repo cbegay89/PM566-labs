@@ -78,7 +78,7 @@ query_ids
 ```
 
     ## Response [https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=covid19%20hawaii&retmax=1000]
-    ##   Date: 2020-09-30 23:06
+    ##   Date: 2020-09-30 23:38
     ##   Status: 200
     ##   Content-Type: text/xml; charset=UTF-8
     ##   Size: 2.34 kB
@@ -184,13 +184,42 @@ Using the function `stringr::str_extract_all()` applied on
 Write a regular expression that captures all such instances
 
 ``` r
-institution <- str_extract_all(
-  publications_txt,
-  "[YOUR REGULAR EXPRESSION HERE]"
-  ) 
+library(stringr)
+institution <- str_extract_all(  
+  publications_txt,  "University\\s+of\\s+[[:alpha:]]+|[[:alpha:]]+\\s+Institute\\s+of\\s+[[:alpha:]]+"  )
 institution <- unlist(institution)
 table(institution)
 ```
+
+    ## institution
+    ##      Australian Institute of Tropical Massachusetts Institute of Technology 
+    ##                                     9                                     1 
+    ##   National Institute of Environmental    Prophylactic Institute of Southern 
+    ##                                     3                                     2 
+    ##                 University of Arizona              University of California 
+    ##                                     2                                     6 
+    ##                 University of Chicago                University of Colorado 
+    ##                                     1                                     1 
+    ##                   University of Hawai                  University of Hawaii 
+    ##                                    20                                    38 
+    ##                  University of Health                University of Illinois 
+    ##                                     1                                     1 
+    ##                    University of Iowa                University of Lausanne 
+    ##                                     4                                     1 
+    ##              University of Louisville                University of Nebraska 
+    ##                                     1                                     5 
+    ##                  University of Nevada                     University of New 
+    ##                                     1                                     2 
+    ##            University of Pennsylvania              University of Pittsburgh 
+    ##                                    18                                     5 
+    ##                 University of Science                   University of South 
+    ##                                    14                                     1 
+    ##                University of Southern                  University of Sydney 
+    ##                                     1                                     1 
+    ##                   University of Texas                     University of the 
+    ##                                     5                                     1 
+    ##                    University of Utah               University of Wisconsin 
+    ##                                     2                                     3
 
 Repeat the exercise and this time focus on schools and departments in
 the form of
@@ -202,11 +231,25 @@ And tabulate the results
 
 ``` r
 schools_and_deps <- str_extract_all(
-  abstracts_txt,
-  "[YOUR REGULAR EXPRESSION HERE]"
+  publications_txt,
+  "School\\s+of\\s+[[:alpha:]]+|[[:alpha:]]+\\s+Department\\s+of\\s+[[:alpha:]]+"
   )
 table(schools_and_deps)
 ```
+
+    ## schools_and_deps
+    ## Abramson Department of Rehabilitation     Faillace Department of Psychiatry 
+    ##                                     1                                     1 
+    ##        Hospital Department of Surgery                    School of Medicine 
+    ##                                     1                                    87 
+    ##                     School of Natural                     School of Nursing 
+    ##                                     1                                     1 
+    ##                      School of Public                      School of Social 
+    ##                                    20                                     1 
+    ##         States Department of Veterans       the Department of Communication 
+    ##                                     1                                     1 
+    ##      University Department of Surgery             US Department of Veterans 
+    ##                                     2                                     1
 
 ## Question 5: Form a database
 
